@@ -1,0 +1,2 @@
+SOLR_URL=http://localhost:8081/solr/
+SOLR_CORE=core_demo

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	   xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+	<!--开启spring自动扫描，扫描com下所有的包  -->
+	<context:component-scan base-package="com.ln"/>
+	<!--dataSource-->
+	 <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.cj.jdbc.Driver"></property>
+		<property name="url" value="jdbc:mysql://localhost:3306/lianxi?useSSL=false&amp;serverTimezone=UTC"></property>
+		<property name="username" value="root"></property>
+		<property name="password" value="root"></property>
+	</bean>
+
+	<!--mybatis交给spring管理-->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="configLocation" value="classpath:SqlMapConfig.xml" />
+		<property name="mapperLocations" value="classpath:mapper/*.xml" />
+		<!--4. 配置别名-->
+		<property name="typeAliasesPackage" value="com.ln.entity" />
+	</bean>
+
+	<!--spring代理mapper接口-->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"></property>
+		<property name="basePackage" value="com.ln.mapper"></property>
+	</bean>
+
+	<!--事务管理器-->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"/>
+	</bean>
+
+	<!--配置事务的通知///声明式事务  -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<!-- rollback-for属性就是当发生异常后，事务回滚后的操作，默认抛异常
+				timeout：事务的超时时间：默认-1，永远不超时，可以设置，一般情况下，一个事务瞬时就可以执行完成
+				但是不排除，有的很长时间，这样的就长时间占用资源，尤其是数据库资源，事务在开启的时候，有可能锁定数据库中的数据
+				单位是:秒
+			 -->
+			<tx:method name="save*" timeout="-1" propagation="REQUIRED"  isolation="DEFAULT"  rollback-for="java.lang.Exception"/>
+			<tx:method name="insert*" timeout="-1" propagation="REQUIRED"  isolation="DEFAULT"  rollback-for="java.lang.Exception"/>
+			<tx:method name="update*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+			<tx:method name="delete*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+			<tx:method name="add*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+			<tx:method name="*" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 配置aop切面，管理事务的切入点，事务帮我们管理那些代码，控制业务层，也就是我们的service层 -->
+	<aop:config>
+		<aop:advisor advice-ref="txAdvice"  pointcut="execution(* com.ln.service.*.*(..))"/>
+	</aop:config>
+</beans>
